@@ -50,20 +50,18 @@ namespace Gameplay.Animation
 
             _walkTrack = new PositionLockedTrack(state, WalkTrack, walkAnimation,
                 settings.WalkStepsAcrossRange, settings.WalkStepsPerLoop);
+
             _walkTrack.Start(MixBlend.Replace);
 
             _runTrack = new PositionLockedTrack(state, RunTrack, runAnimation,
                 settings.RunStepsAcrossRange, settings.RunStepsPerLoop);
+
             _runTrack.Start(MixBlend.Replace);
         }
 
         public void Tick(float currentX, float currentSpeed, HorizontalRange range)
         {
-            _smoothedSpeed = Mathf.SmoothDamp(
-                _smoothedSpeed,
-                Mathf.Abs(currentSpeed),
-                ref _smoothedSpeedVelocity,
-                settings.SpeedSmoothTime);
+            _smoothedSpeed = Mathf.SmoothDamp(_smoothedSpeed, Mathf.Abs(currentSpeed), ref _smoothedSpeedVelocity, settings.SpeedSmoothTime);
 
             var walkWeight = Mathf.Clamp01(settings.WalkWeightCurve.Evaluate(_smoothedSpeed));
             var runWeight = Mathf.Clamp01(settings.RunWeightCurve.Evaluate(_smoothedSpeed));

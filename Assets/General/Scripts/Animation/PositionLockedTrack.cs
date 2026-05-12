@@ -14,12 +14,7 @@ namespace Gameplay.Animation
 
         private TrackEntry _entry;
 
-        public PositionLockedTrack(
-            AnimationState state,
-            int trackIndex,
-            string animationName,
-            float stepsAcrossRange,
-            float stepsPerLoop)
+        public PositionLockedTrack(AnimationState state, int trackIndex, string animationName, float stepsAcrossRange, float stepsPerLoop)
         {
             _state = state;
             _trackIndex = trackIndex;

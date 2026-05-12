@@ -6,7 +6,6 @@ using UnityEngine;
 
 namespace Gameplay
 {
-    [DefaultExecutionOrder(-100)]
     public sealed class PlayerController : MonoBehaviour
     {
         [SerializeField] private MousePlayerInput input;
