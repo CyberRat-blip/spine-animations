@@ -17,7 +17,6 @@ MonoBehaviour:
   yLine: 0
   smoothTime: 0.35
   maxSpeed: 6
-  idleSpeedThreshold: 0.15
   arriveEpsilon: 0.02
   speedSmoothTime: 0.18
   walkStepsAcrossRange: 12
@@ -100,8 +99,3 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   aimFadeTime: 0.15
-  characterHeight: 7
-  aimHeightThresholdMultiplier: 2
-  aimSmoothBand: 0.6
-  bentDistance: 0.6
-  straightDistance: 4
