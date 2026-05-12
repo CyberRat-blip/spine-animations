@@ -91,6 +91,16 @@ namespace Gameplay.Aim
 
         private void AfterAnimationApply(ISkeletonAnimation _)
         {
+            var skeleton = skeletonAnimation.Skeleton;
+            if (_currentAlpha <= 0f)
+            {
+                var aimIk = skeleton.FindIkConstraint("aim-ik");
+                if (aimIk != null)
+                {
+                    aimIk.Mix = aimIk.Data.Mix;
+                }
+            }
+
             if (_crosshairBone == null)
             {
                 return;
