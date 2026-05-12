@@ -9,12 +9,10 @@ namespace Gameplay
     [DefaultExecutionOrder(-100)]
     public sealed class PlayerController : MonoBehaviour
     {
-        [Header("Subsystems (assign in inspector)")]
         [SerializeField] private MousePlayerInput input;
         [SerializeField] private InertialHorizontalMover mover;
         [SerializeField] private DeterministicLocomotionAnimator locomotion;
         [SerializeField] private SpineAimController aim;
-
         [SerializeField] private WorldCursorCrosshair cursorCrosshair;
 
         private IPlayerInput _input;

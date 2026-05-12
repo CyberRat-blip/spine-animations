@@ -100,7 +100,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   aimFadeTime: 0.15
-  characterHeight: 2
+  characterHeight: 7
   aimHeightThresholdMultiplier: 2
   aimSmoothBand: 0.6
   bentDistance: 0.6

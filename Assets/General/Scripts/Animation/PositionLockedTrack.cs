@@ -1,5 +1,4 @@
 using Spine;
-using Spine.Unity;
 using UnityEngine;
 using AnimationState = Spine.AnimationState;
 
@@ -15,7 +14,12 @@ namespace Gameplay.Animation
 
         private TrackEntry _entry;
 
-        public PositionLockedTrack(AnimationState state, int trackIndex, string animationName, float stepsAcrossRange, float stepsPerLoop)
+        public PositionLockedTrack(
+            AnimationState state,
+            int trackIndex,
+            string animationName,
+            float stepsAcrossRange,
+            float stepsPerLoop)
         {
             _state = state;
             _trackIndex = trackIndex;
@@ -58,7 +62,7 @@ namespace Gameplay.Animation
             }
 
             var loops = normalizedX * (_stepsAcrossRange / _stepsPerLoop);
-            var phase = loops - Mathf.Floor(loops); // [0..1)
+            var phase = loops - Mathf.Floor(loops);
             _entry.TrackTime = _entry.AnimationStart + phase * loopDuration;
         }
     }

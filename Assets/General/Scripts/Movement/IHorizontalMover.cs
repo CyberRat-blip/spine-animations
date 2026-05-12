@@ -4,7 +4,6 @@ namespace Gameplay.Movement
     {
         float CurrentX { get; }
         float CurrentSpeed { get; }
-
         HorizontalRange Range { get; }
 
         void SetTargetX(float targetX);

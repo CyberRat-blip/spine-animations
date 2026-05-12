@@ -24,10 +24,10 @@ namespace Gameplay.Input
                 return;
             }
 
-            var screen = UnityEngine.Input.mousePosition;
-            screen.z = -worldCamera.transform.position.z;
-            var world = worldCamera.ScreenToWorldPoint(screen);
-            CursorWorldPosition = new Vector2(world.x, world.y);
+            var mouseScreenPoint = UnityEngine.Input.mousePosition;
+            mouseScreenPoint.z = -worldCamera.transform.position.z;
+            var worldPoint = worldCamera.ScreenToWorldPoint(mouseScreenPoint);
+            CursorWorldPosition = new Vector2(worldPoint.x, worldPoint.y);
 
             IsAiming = UnityEngine.Input.GetMouseButton(1);
         }

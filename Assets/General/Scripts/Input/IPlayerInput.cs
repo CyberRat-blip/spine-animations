@@ -6,7 +6,6 @@ namespace Gameplay.Input
     {
         Vector2 CursorWorldPosition { get; }
         bool IsAiming { get; }
-
         void Tick();
     }
 }

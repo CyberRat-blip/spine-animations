@@ -6,14 +6,12 @@ using UnityEngine;
 
 namespace Gameplay.Animation
 {
-    
     [RequireComponent(typeof(SkeletonAnimation))]
     public sealed class DeterministicLocomotionAnimator : MonoBehaviour, ILocomotionAnimator
     {
         [SerializeField] private SkeletonAnimation skeletonAnimation;
         [SerializeField] private PlayerSettings settings;
 
-        [Header("Animation names (must exist on the skeleton)")]
         [SpineAnimation][SerializeField] private string idleAnimation = "idle";
         [SpineAnimation][SerializeField] private string walkAnimation = "walk";
         [SpineAnimation][SerializeField] private string runAnimation = "run";
@@ -61,7 +59,11 @@ namespace Gameplay.Animation
 
         public void Tick(float currentX, float currentSpeed, HorizontalRange range)
         {
-            _smoothedSpeed = Mathf.SmoothDamp(_smoothedSpeed,Mathf.Abs(currentSpeed),ref _smoothedSpeedVelocity,settings.SpeedSmoothTime);
+            _smoothedSpeed = Mathf.SmoothDamp(
+                _smoothedSpeed,
+                Mathf.Abs(currentSpeed),
+                ref _smoothedSpeedVelocity,
+                settings.SpeedSmoothTime);
 
             var walkWeight = Mathf.Clamp01(settings.WalkWeightCurve.Evaluate(_smoothedSpeed));
             var runWeight = Mathf.Clamp01(settings.RunWeightCurve.Evaluate(_smoothedSpeed));

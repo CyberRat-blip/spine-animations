@@ -2,38 +2,25 @@ using UnityEngine;
 
 namespace Gameplay.Config
 {
-    [CreateAssetMenu(fileName = "PlayerSettings", menuName = "Platformer1/Player Settings", order = 0)]
+    [CreateAssetMenu(fileName = "PlayerSettings", menuName = "Gameplay/Player Settings", order = 0)]
     public sealed class PlayerSettings : ScriptableObject
     {
-        [Header("Horizontal range (world units)")]
         [SerializeField] private float minX = -8f;
-
         [SerializeField] private float maxX = 8f;
-
         [SerializeField] private float yLine = -3f;
 
-        [Header("Movement")]
         [SerializeField] private float smoothTime = 0.35f;
-
         [SerializeField] private float maxSpeed = 6f;
-
         [SerializeField] private float idleSpeedThreshold = 0.15f;
-
         [SerializeField] private float arriveEpsilon = 0.02f;
-
         [SerializeField] private float speedSmoothTime = 0.18f;
 
-        [Header("Walk animation")]
         [SerializeField] private float walkStepsAcrossRange = 12f;
-
         [SerializeField] private float walkStepsPerLoop = 2f;
 
-        [Header("Run animation")]
         [SerializeField] private float runStepsAcrossRange = 8f;
-
         [SerializeField] private float runStepsPerLoop = 2f;
 
-        [Header("Locomotion blend (weights by |speed|)")]
         [SerializeField] private AnimationCurve walkWeightCurve = new AnimationCurve(
             new Keyframe(0f, 0f),
             new Keyframe(0.3f, 1f),
@@ -45,17 +32,11 @@ namespace Gameplay.Config
             new Keyframe(3f, 0f),
             new Keyframe(6f, 1f));
 
-        [Header("Aim")]
         [SerializeField] private float aimFadeTime = 0.15f;
-
         [SerializeField] private float characterHeight = 2f;
-
         [SerializeField] private float aimHeightThresholdMultiplier = 2f;
-
         [SerializeField] private float aimSmoothBand = 0.6f;
-
         [SerializeField] private float bentDistance = 0.6f;
-
         [SerializeField] private float straightDistance = 4f;
 
         public float MinX => minX;
