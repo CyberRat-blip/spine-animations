@@ -15,11 +15,6 @@ namespace Gameplay
         [SerializeField] private SpineAimController aim;
         [SerializeField] private WorldCursorCrosshair cursorCrosshair;
 
-        private IPlayerInput _input;
-        private IHorizontalMover _mover;
-        private ILocomotionAnimator _locomotion;
-        private IAimController _aim;
-
         private void Reset()
         {
             input = GetComponent<MousePlayerInput>();
@@ -29,14 +24,6 @@ namespace Gameplay
             cursorCrosshair = GetComponentInChildren<WorldCursorCrosshair>();
         }
 
-        private void Awake()
-        {
-            _input = input;
-            _mover = mover;
-            _locomotion = locomotion;
-            _aim = aim;
-        }
-
         private void Update()
         {
             TickGameplay(Time.deltaTime);
@@ -44,15 +31,15 @@ namespace Gameplay
 
         private void TickGameplay(float deltaTime)
         {
-            _input.Tick();
+            input.Tick();
 
-            _mover.SetTargetX(_input.CursorWorldPosition.x);
-            _mover.Tick(deltaTime);
+            mover.SetTargetX(input.CursorWorldPosition.x);
+            mover.Tick(deltaTime);
 
-            _locomotion.Tick(_mover.CurrentX, _mover.CurrentSpeed, _mover.Range);
-            _aim.Tick(_input.IsAiming, _input.CursorWorldPosition);
+            locomotion.Tick(mover.CurrentX, mover.CurrentSpeed, mover.Range);
+            aim.Tick(input.IsAiming, input.CursorWorldPosition);
 
-            cursorCrosshair?.Tick(_input.IsAiming, _input.CursorWorldPosition);
+            cursorCrosshair?.Tick(input.IsAiming, input.CursorWorldPosition);
         }
     }
 }
