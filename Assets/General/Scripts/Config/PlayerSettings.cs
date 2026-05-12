@@ -17,6 +17,7 @@ namespace Gameplay.Config
         [SerializeField] private float speedSmoothTime = 0.18f;
 
         [Header("Локомоция")]
+        [SerializeField] private float idleSpeedThreshold = 0.15f;
         [SerializeField] private float walkStepsAcrossRange = 12f;
         [SerializeField] private float walkStepsPerLoop = 2f;
 
@@ -45,6 +46,7 @@ namespace Gameplay.Config
         public float ArriveEpsilon => Mathf.Max(0f, arriveEpsilon);
         public float SpeedSmoothTime => Mathf.Max(0.0001f, speedSmoothTime);
 
+        public float IdleSpeedThreshold => Mathf.Max(0f, idleSpeedThreshold);
         public float WalkStepsAcrossRange => Mathf.Max(0.0001f, walkStepsAcrossRange);
         public float WalkStepsPerLoop => Mathf.Max(0.0001f, walkStepsPerLoop);
         public float RunStepsAcrossRange => Mathf.Max(0.0001f, runStepsAcrossRange);

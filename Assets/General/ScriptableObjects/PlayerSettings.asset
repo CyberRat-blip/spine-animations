@@ -12,13 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d111bab290cb5e4487f1810e497a430, type: 3}
   m_Name: PlayerSettings
   m_EditorClassIdentifier: 
-  minX: -20
-  maxX: 20
+  minX: -18
+  maxX: 18
   yLine: 0
   smoothTime: 0.35
   maxSpeed: 6
   arriveEpsilon: 0.02
   speedSmoothTime: 0.18
+  idleSpeedThreshold: 0.15
   walkStepsAcrossRange: 12
   walkStepsPerLoop: 2
   runStepsAcrossRange: 8

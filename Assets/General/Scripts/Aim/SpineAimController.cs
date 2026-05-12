@@ -102,7 +102,7 @@ namespace Gameplay.Aim
             _crosshairBone.Y = blended.y;
         }
 
-        public void Tick(bool isAimingHeld, Vector2 cursorWorldPosition, Vector3 playerWorldPosition)
+        public void Tick(bool isAimingHeld, Vector2 cursorWorldPosition)
         {
             IsAiming = isAimingHeld;
 

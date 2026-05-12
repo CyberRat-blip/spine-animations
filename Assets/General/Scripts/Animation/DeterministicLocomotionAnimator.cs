@@ -68,6 +68,12 @@ namespace Gameplay.Animation
             var walkWeight = Mathf.Clamp01(settings.WalkWeightCurve.Evaluate(_smoothedSpeed));
             var runWeight = Mathf.Clamp01(settings.RunWeightCurve.Evaluate(_smoothedSpeed));
 
+            if (_smoothedSpeed < settings.IdleSpeedThreshold)
+            {
+                walkWeight = 0f;
+                runWeight = 0f;
+            }
+
             _idleEntry.Alpha = 1f;
             _walkTrack.SetAlpha(walkWeight);
             _runTrack.SetAlpha(runWeight);

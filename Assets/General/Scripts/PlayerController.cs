@@ -39,18 +39,20 @@ namespace Gameplay
 
         private void Update()
         {
+            TickGameplay(Time.deltaTime);
+        }
+
+        private void TickGameplay(float deltaTime)
+        {
             _input.Tick();
 
             _mover.SetTargetX(_input.CursorWorldPosition.x);
-            _mover.Tick(Time.deltaTime);
+            _mover.Tick(deltaTime);
 
             _locomotion.Tick(_mover.CurrentX, _mover.CurrentSpeed, _mover.Range);
-            _aim.Tick(_input.IsAiming, _input.CursorWorldPosition, transform.position);
+            _aim.Tick(_input.IsAiming, _input.CursorWorldPosition);
 
-            if (cursorCrosshair != null)
-            {
-                cursorCrosshair.Tick(_input.IsAiming, _input.CursorWorldPosition);
-            }
+            cursorCrosshair?.Tick(_input.IsAiming, _input.CursorWorldPosition);
         }
     }
 }
