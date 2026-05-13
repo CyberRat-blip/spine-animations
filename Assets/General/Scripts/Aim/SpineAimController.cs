@@ -39,24 +39,18 @@ namespace Gameplay.Aim
         [SerializeField] private int aimTrackIndex = 3;
 
         [Header("Alt - без Spine: код фиксирует и крутит кости")]
-        [Tooltip("Кости, которые разворачиваются к прицелу (например torso/chest/head). Их сумма weight задаёт долю общего поворота, обычно 1 на главной кости.")]
         [SerializeField] private AltRotateBone[] altRotateBones;
 
-        [Tooltip("Кости, которые лочатся в setup-позу при прицеливании (обычно обе руки, чтобы они не дёргались под беговую анимацию).")]
         [SerializeField] private AltLockedBone[] altLockedBones;
 
-        [Tooltip("Угловое смещение прицеливания в градусах. Положительное значение поднимает аим выше курсора, отрицательное опускает. Работает одинаково в обе стороны флипа, потому что skeleton.ScaleX = -1 зеркалит только X, Y не трогает.")]
         [Range(-90f, 90f)]
         [SerializeField] private float altAimAngleOffset = 0f;
 
         [Header("Facing - автоповорот персонажа")]
-        [Tooltip("При прицеливании смотрит в сторону курсора, при беге - в сторону движения. На детерминированную локомоцию не влияет.")]
         [SerializeField] private bool autoFlip = true;
 
-        [Tooltip("Мёртвая зона в мировых юнитах: насколько курсор должен уйти от центра персонажа, чтобы инициировать разворот при прицеливании.")]
         [SerializeField] private float facingAimDeadZone = 0.1f;
 
-        [Tooltip("Минимальная горизонтальная скорость, при которой персонаж разворачивается по направлению движения.")]
         [SerializeField] private float facingMovementThreshold = 0.1f;
 
         [Header("Crosshair")]
@@ -233,8 +227,6 @@ namespace Gameplay.Aim
 
         private void ApplyAltAim(float alpha)
         {
-            // 1) Фиксируем перечисленные кости в setup-позе. Это просто перезапись local-значений,
-            //    мировые трансформы тут ещё не нужны.
             if (_altLockedRefs != null)
             {
                 for (var i = 0; i < _altLockedRefs.Length; i++)
@@ -253,23 +245,9 @@ namespace Gameplay.Aim
                 return;
             }
 
-            // 2) Принудительно пересчитываем мировые трансформы под СВЕЖИЕ local-значения.
-            //    Без этого bone.WorldRotationX и bone.WorldX/Y будут от предыдущего кадра, что
-            //    замыкается с беговой анимацией в положительную обратную связь и даёт тряску.
-            //    Spine после нашего колбэка вызовет UpdateWorldTransform ещё раз - финальный рендер
-            //    использует именно вторую итерацию, так что повторная работа здесь не теряется.
             var skeleton = skeletonAnimation.Skeleton;
             skeleton.UpdateWorldTransform();
 
-            // Оффсет задан в "визуальной" системе Unity (положительный = выше). Поскольку
-            // skeleton.ScaleX = -1 зеркалит только X (Y не трогает), направление "вверх"
-            // совпадает с положительным приращением atan2 в обоих случаях - знак инвертировать
-            // НЕ нужно. Раньше тут стоял множитель * sign(ScaleX), и при флипе оффсет
-            // вкручивал корпус в обратную сторону.
-            var effectiveOffset = altAimAngleOffset;
-
-            // 3) Доворачиваем кости-таргеты к курсору. Здесь bone.WorldRotationX уже текущий,
-            //    формула стабильна.
             for (var i = 0; i < _altRotateRefs.Length; i++)
             {
                 var bone = _altRotateRefs[i];
@@ -282,7 +260,7 @@ namespace Gameplay.Aim
                 {
                     continue;
                 }
-                RotateBoneTowards(bone, _cursorSkelLocal, w, effectiveOffset);
+                RotateBoneTowards(bone, _cursorSkelLocal, w, altAimAngleOffset);
             }
         }
 
@@ -307,11 +285,16 @@ namespace Gameplay.Aim
                 return;
             }
 
-            var desiredWorldDeg = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg + worldOffsetDeg;
+            var sk = bone.Skeleton;
+            var flip = Mathf.Sign(sk.ScaleX * sk.ScaleY);
+            if (flip == 0f)
+            {
+                flip = 1f;
+            }
 
-            // Локальный поворот = (нужный мировой - мировой родителя), с учётом знака
-            // родительской матрицы (определитель < 0 означает отражение - локальный поворот
-            // распространяется в обратную сторону).
+            var dyAim = dy * flip;
+            var desiredWorldDeg = Mathf.Atan2(dyAim, dx) * Mathf.Rad2Deg + worldOffsetDeg;
+
             var parent = bone.Parent;
             var parentWorldDeg = parent != null ? parent.WorldRotationX : 0f;
             var sign = parent != null
@@ -335,9 +318,6 @@ namespace Gameplay.Aim
 
             var desiredSign = 0;
 
-            // Пока аим не успел угаснуть (alpha > 0), фейсинг приоритетно держится на курсоре -
-            // иначе при отпускании кнопки фейс мгновенно прыгает на сторону движения, а корпус
-            // ещё продолжает довод к курсору, что даёт визуально "согнут не в ту сторону".
             var preferCursorFacing = isAimingHeld || _currentAlpha > 0f;
 
             if (preferCursorFacing)

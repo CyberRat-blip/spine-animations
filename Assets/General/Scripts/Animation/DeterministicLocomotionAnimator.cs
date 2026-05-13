@@ -77,8 +77,9 @@ namespace Gameplay.Animation
             _runTrack.SetAlpha(runWeight);
 
             var normalizedX = range.Normalize(currentX);
-            _walkTrack.Apply(normalizedX);
-            _runTrack.Apply(normalizedX);
+            var invertPhase = skeletonAnimation.Skeleton.ScaleX < 0f;
+            _walkTrack.Apply(normalizedX, invertPhase);
+            _runTrack.Apply(normalizedX, invertPhase);
         }
     }
 }

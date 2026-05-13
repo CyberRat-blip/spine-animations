@@ -601,10 +601,14 @@ MonoBehaviour:
   aimIk: aim-ik
   aimTrackIndex: 3
   altRotateBones:
-  - boneName: torso
+  - boneName: torso2
     weight: 1
   altLockedBones:
   - boneName: back-shoulder
+  altAimAngleOffset: 90
+  autoFlip: 1
+  facingAimDeadZone: 0.1
+  facingMovementThreshold: 0.1
   crosshairBoneName: crosshair
 --- !u!114 &895171255
 MonoBehaviour:

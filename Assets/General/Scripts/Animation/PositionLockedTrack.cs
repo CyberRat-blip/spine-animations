@@ -43,7 +43,7 @@ namespace Gameplay.Animation
             _entry.Alpha = Mathf.Clamp01(alpha);
         }
 
-        public void Apply(float normalizedX)
+        public void Apply(float normalizedX, bool invertPhaseWithinLoop)
         {
             if (_entry == null)
             {
@@ -58,6 +58,11 @@ namespace Gameplay.Animation
 
             var loops = normalizedX * (_stepsAcrossRange / _stepsPerLoop);
             var phase = loops - Mathf.Floor(loops);
+            if (invertPhaseWithinLoop)
+            {
+                phase = 1f - phase;
+            }
+
             _entry.TrackTime = _entry.AnimationStart + phase * loopDuration;
         }
     }
