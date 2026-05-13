@@ -596,10 +596,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skeletonAnimation: {fileID: 895171249}
   settings: {fileID: 11400000, guid: c083d48138798e74aa0fca11b4265c2b, type: 2}
+  initialAimMode: 1
   aimAnimation: aim
-  crosshairBoneName: crosshair
-  crosshairSlotName: crosshair
+  aimIk: aim-ik
   aimTrackIndex: 3
+  altRotateBones:
+  - boneName: torso
+    weight: 1
+  altLockedBones:
+  - boneName: back-shoulder
+  crosshairBoneName: crosshair
 --- !u!114 &895171255
 MonoBehaviour:
   m_ObjectHideFlags: 0

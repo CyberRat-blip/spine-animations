@@ -35,6 +35,8 @@ namespace Gameplay
             mover.SetTargetX(input.CursorWorldPosition.x);
             mover.Tick(deltaTime);
 
+            aim.UpdateFacing(input.IsAiming, input.CursorWorldPosition.x, mover.CurrentSpeed);
+
             locomotion.Tick(mover.CurrentX, mover.CurrentSpeed, mover.Range);
             aim.Tick(input.IsAiming, input.CursorWorldPosition);
 
