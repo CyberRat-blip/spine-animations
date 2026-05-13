@@ -47,16 +47,19 @@ namespace Gameplay.Animation
             _idleEntry = state.SetAnimation(IdleTrack, idleAnimation, loop: true);
             _idleEntry.MixBlend = MixBlend.Replace;
             _idleEntry.Alpha = 1f;
+            _idleEntry.ShortestRotation = true;
 
             _walkTrack = new PositionLockedTrack(state, WalkTrack, walkAnimation,
                 settings.WalkStepsAcrossRange, settings.WalkStepsPerLoop);
 
             _walkTrack.Start(MixBlend.Replace);
+            _walkTrack.Entry.ShortestRotation = true;
 
             _runTrack = new PositionLockedTrack(state, RunTrack, runAnimation,
                 settings.RunStepsAcrossRange, settings.RunStepsPerLoop);
 
             _runTrack.Start(MixBlend.Replace);
+            _runTrack.Entry.ShortestRotation = true;
         }
 
         public void Tick(float currentX, float currentSpeed, HorizontalRange range)

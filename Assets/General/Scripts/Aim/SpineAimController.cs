@@ -65,6 +65,8 @@ namespace Gameplay.Aim
 
         private float _lastApplyAltScaleSign = 1f;
 
+        private bool _resetAltBonesBeforeNextApply;
+
         public bool IsAiming { get; private set; }
 
         public float AimSpineWhenCursorAboveOffsetY => aimSpineWhenCursorAboveOffsetY;
@@ -186,6 +188,7 @@ namespace Gameplay.Aim
                 skeletonAnimation = GetComponent<SkeletonAnimation>();
             }
 
+            skeletonAnimation.BeforeApply += BeforeAnimationApply;
             skeletonAnimation.UpdateLocal += AfterAnimationApply;
         }
 
@@ -193,8 +196,20 @@ namespace Gameplay.Aim
         {
             if (skeletonAnimation != null)
             {
+                skeletonAnimation.BeforeApply -= BeforeAnimationApply;
                 skeletonAnimation.UpdateLocal -= AfterAnimationApply;
             }
+        }
+
+        private void BeforeAnimationApply(ISkeletonAnimation _)
+        {
+            if (!_resetAltBonesBeforeNextApply)
+            {
+                return;
+            }
+
+            _resetAltBonesBeforeNextApply = false;
+            ResetAltAffectedBonesToSetupPose();
         }
 
         private void ApplyAimAnimation()
@@ -270,6 +285,35 @@ namespace Gameplay.Aim
             var blended = Vector2.Lerp(setup, _cursorSkelLocal, _currentAlpha);
             _crosshairBone.X = blended.x;
             _crosshairBone.Y = blended.y;
+        }
+
+        private void ResetAltAffectedBonesToSetupPose()
+        {
+            if (_altLockedRefs != null)
+            {
+                for (var i = 0; i < _altLockedRefs.Length; i++)
+                {
+                    var bone = _altLockedRefs[i];
+                    if (bone != null)
+                    {
+                        LerpBoneToSetup(bone, 1f);
+                    }
+                }
+            }
+
+            if (_altRotateRefs == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < _altRotateRefs.Length; i++)
+            {
+                var bone = _altRotateRefs[i];
+                if (bone != null)
+                {
+                    LerpBoneToSetup(bone, 1f);
+                }
+            }
         }
 
         private void ApplyAltAim(float alpha)
@@ -429,7 +473,13 @@ namespace Gameplay.Aim
 
             var targetAlpha = isAimingHeld ? 1f : 0f;
             var fadeSpeed = 1f / settings.AimFadeTime;
+            var alphaBefore = _currentAlpha;
             _currentAlpha = Mathf.MoveTowards(_currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+
+            if (!_spineAimActive && alphaBefore > 0f && _currentAlpha <= 0f)
+            {
+                _resetAltBonesBeforeNextApply = true;
+            }
 
             if (_aimEntry != null)
             {
