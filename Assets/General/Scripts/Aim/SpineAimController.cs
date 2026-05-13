@@ -47,9 +47,11 @@ namespace Gameplay.Aim
 
         [Header("Crosshair")]
         [SpineBone][SerializeField] private string crosshairBoneName = "crosshair";
+        [SpineSlot][SerializeField] private string crosshairSlotName = "crosshair";
 
         private TrackEntry _aimEntry;
         private Bone _crosshairBone;
+        private Slot _crosshairSlot;
 
         private Bone[] _altRotateRefs;
         private float[] _altRotateWeights;
@@ -96,6 +98,11 @@ namespace Gameplay.Aim
 
             var skeleton = skeletonAnimation.Skeleton;
             _crosshairBone = skeleton.FindBone(crosshairBoneName);
+            if (!string.IsNullOrEmpty(crosshairSlotName))
+            {
+                _crosshairSlot = skeleton.FindSlot(crosshairSlotName);
+            }
+
             if (_crosshairBone != null)
             {
                 _setupCrosshairX = _crosshairBone.Data.X;
@@ -276,15 +283,18 @@ namespace Gameplay.Aim
                 ApplyAltAim(_currentAlpha);
             }
 
-            if (_crosshairBone == null)
+            if (_crosshairBone != null)
             {
-                return;
+                var setup = new Vector2(_setupCrosshairX, _setupCrosshairY);
+                var blended = Vector2.Lerp(setup, _cursorSkelLocal, _currentAlpha);
+                _crosshairBone.X = blended.x;
+                _crosshairBone.Y = blended.y;
             }
 
-            var setup = new Vector2(_setupCrosshairX, _setupCrosshairY);
-            var blended = Vector2.Lerp(setup, _cursorSkelLocal, _currentAlpha);
-            _crosshairBone.X = blended.x;
-            _crosshairBone.Y = blended.y;
+            if (_crosshairSlot != null && _spineAimActive)
+            {
+                _crosshairSlot.Attachment = null;
+            }
         }
 
         private void ResetAltAffectedBonesToSetupPose()

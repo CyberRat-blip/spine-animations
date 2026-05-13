@@ -763,12 +763,12 @@ MonoBehaviour:
   - boneName: back-shoulder
   - boneName: gun
   - boneName: muzzle
-  - boneName: torso
   - boneName: rear-upper-arm
   - boneName: rear-bracer
   altAimAngleOffset: 90
   aimSpineWhenCursorAboveOffsetY: 14
   crosshairBoneName: crosshair
+  crosshairSlotName: crosshair
 --- !u!114 &895171255
 MonoBehaviour:
   m_ObjectHideFlags: 0
