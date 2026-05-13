@@ -20,7 +20,7 @@ namespace Gameplay.Animation
         private const int WalkTrack = 1;
         private const int RunTrack = 2;
 
-        private TrackEntry _idleEntry;
+        private TrackEntry _idleTrackEntry;
         private PositionLockedTrack _walkTrack;
         private PositionLockedTrack _runTrack;
 
@@ -44,10 +44,10 @@ namespace Gameplay.Animation
         {
             var state = skeletonAnimation.AnimationState;
 
-            _idleEntry = state.SetAnimation(IdleTrack, idleAnimation, loop: true);
-            _idleEntry.MixBlend = MixBlend.Replace;
-            _idleEntry.Alpha = 1f;
-            _idleEntry.ShortestRotation = true;
+            _idleTrackEntry = state.SetAnimation(IdleTrack, idleAnimation, loop: true);
+            _idleTrackEntry.MixBlend = MixBlend.Replace;
+            _idleTrackEntry.Alpha = 1f;
+            _idleTrackEntry.ShortestRotation = true;
 
             _walkTrack = new PositionLockedTrack(state, WalkTrack, walkAnimation,
                 settings.WalkStepsAcrossRange, settings.WalkStepsPerLoop);
@@ -75,7 +75,7 @@ namespace Gameplay.Animation
                 runWeight = 0f;
             }
 
-            _idleEntry.Alpha = 1f;
+            _idleTrackEntry.Alpha = 1f;
             _walkTrack.SetAlpha(walkWeight);
             _runTrack.SetAlpha(runWeight);
 

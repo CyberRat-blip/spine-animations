@@ -12,7 +12,7 @@ namespace Gameplay.Animation
         private readonly float _stepsAcrossRange;
         private readonly float _stepsPerLoop;
 
-        private TrackEntry _entry;
+        private TrackEntry _trackEntry;
 
         public PositionLockedTrack(AnimationState state, int trackIndex, string animationName, float stepsAcrossRange, float stepsPerLoop)
         {
@@ -23,34 +23,34 @@ namespace Gameplay.Animation
             _stepsPerLoop = Mathf.Max(0.0001f, stepsPerLoop);
         }
 
-        public TrackEntry Entry => _entry;
+        public TrackEntry Entry => _trackEntry;
 
         public void Start(MixBlend blend)
         {
-            _entry = _state.SetAnimation(_trackIndex, _animationName, loop: true);
-            _entry.MixBlend = blend;
-            _entry.TimeScale = 0f;
-            _entry.Alpha = 0f;
+            _trackEntry = _state.SetAnimation(_trackIndex, _animationName, loop: true);
+            _trackEntry.MixBlend = blend;
+            _trackEntry.TimeScale = 0f;
+            _trackEntry.Alpha = 0f;
         }
 
         public void SetAlpha(float alpha)
         {
-            if (_entry == null)
+            if (_trackEntry == null)
             {
                 return;
             }
 
-            _entry.Alpha = Mathf.Clamp01(alpha);
+            _trackEntry.Alpha = Mathf.Clamp01(alpha);
         }
 
         public void Apply(float normalizedX, bool invertPhaseWithinLoop)
         {
-            if (_entry == null)
+            if (_trackEntry == null)
             {
                 return;
             }
 
-            var loopDuration = _entry.AnimationEnd - _entry.AnimationStart;
+            var loopDuration = _trackEntry.AnimationEnd - _trackEntry.AnimationStart;
             if (loopDuration <= 0f)
             {
                 return;
@@ -63,7 +63,7 @@ namespace Gameplay.Animation
                 phase = 1f - phase;
             }
 
-            _entry.TrackTime = _entry.AnimationStart + phase * loopDuration;
+            _trackEntry.TrackTime = _trackEntry.AnimationStart + phase * loopDuration;
         }
     }
 }

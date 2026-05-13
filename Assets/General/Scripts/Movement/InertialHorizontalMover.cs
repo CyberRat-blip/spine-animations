@@ -8,11 +8,11 @@ namespace Gameplay.Movement
         [SerializeField] private PlayerSettings settings;
 
         private float _targetX;
-        private float _velocity;
+        private float _horizontalVelocity;
         private HorizontalRange _range;
 
         public float CurrentX => transform.position.x;
-        public float CurrentSpeed => _velocity;
+        public float CurrentSpeed => _horizontalVelocity;
         public HorizontalRange Range => _range;
 
         private void Awake()
@@ -39,16 +39,16 @@ namespace Gameplay.Movement
             position.x = Mathf.SmoothDamp(
                 position.x,
                 _targetX,
-                ref _velocity,
+                ref _horizontalVelocity,
                 settings.SmoothTime,
                 settings.MaxSpeed,
                 deltaTime);
 
             if (Mathf.Abs(position.x - _targetX) <= settings.ArriveEpsilon &&
-                Mathf.Abs(_velocity) <= settings.ArriveEpsilon)
+                Mathf.Abs(_horizontalVelocity) <= settings.ArriveEpsilon)
             {
                 position.x = _targetX;
-                _velocity = 0f;
+                _horizontalVelocity = 0f;
             }
 
             position.x = _range.Clamp(position.x);

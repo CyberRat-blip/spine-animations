@@ -29,12 +29,12 @@ namespace Gameplay.Aim
         [SerializeField] private SkeletonAnimation skeletonAnimation;
         [SerializeField] private PlayerSettings settings;
 
-        [Header("Aim - Spine анимация + IK")]
+        [Header("Standert Aim")]
         [SpineAnimation][SerializeField] private string aimAnimation = "aim";
         [SpineIkConstraint][SerializeField] private string aimIk = "aim-ik";
         [SerializeField] private int aimTrackIndex = 3;
 
-        [Header("Alt - код крутит кости")]
+        [Header("Alt Aim")]
         [SerializeField] private AltRotateBone[] altRotateBones;
 
         [SerializeField] private AltLockedBone[] altLockedBones;
@@ -49,25 +49,25 @@ namespace Gameplay.Aim
         [SpineBone][SerializeField] private string crosshairBoneName = "crosshair";
         [SpineSlot][SerializeField] private string crosshairSlotName = "crosshair";
 
-        private TrackEntry _aimEntry;
+        private TrackEntry _aimTrackEntry;
         private Bone _crosshairBone;
         private Slot _crosshairSlot;
 
-        private Bone[] _altRotateRefs;
-        private float[] _altRotateWeights;
-        private Bone[] _altLockedRefs;
+        private Bone[] _cachedAltRotateBones;
+        private float[] _cachedAltRotateWeights;
+        private Bone[] _cachedAltLockedBones;
 
         private bool _initialized;
-        private bool _spineAimActive;
+        private bool _useSpineAimAnimation;
 
-        private float _setupCrosshairX;
-        private float _setupCrosshairY;
-        private Vector2 _cursorSkelLocal;
-        private float _currentAlpha;
+        private float _crosshairSetupPoseLocalX;
+        private float _crosshairSetupPoseLocalY;
+        private Vector2 _cursorLocalInSkeletonSpace;
+        private float _aimBlendAlpha;
 
-        private float _lastApplyAltScaleSign = 1f;
+        private float _lastAltAimSkeletonScaleXSign = 1f;
 
-        private bool _resetAltBonesBeforeNextApply;
+        private bool _shouldResetAltBonesBeforeNextAnimationApply;
 
         public bool IsAiming { get; private set; }
 
@@ -77,7 +77,7 @@ namespace Gameplay.Aim
             ? skeletonAnimation.transform.position.y + aimSpineWhenCursorAboveOffsetY
             : transform.position.y + aimSpineWhenCursorAboveOffsetY;
 
-        public bool UsesSpineAimAnimation => _spineAimActive;
+        public bool UsesSpineAimAnimation => _useSpineAimAnimation;
 
         private void Reset()
         {
@@ -105,17 +105,17 @@ namespace Gameplay.Aim
 
             if (_crosshairBone != null)
             {
-                _setupCrosshairX = _crosshairBone.Data.X;
-                _setupCrosshairY = _crosshairBone.Data.Y;
-                _cursorSkelLocal = new Vector2(_setupCrosshairX, _setupCrosshairY);
+                _crosshairSetupPoseLocalX = _crosshairBone.Data.X;
+                _crosshairSetupPoseLocalY = _crosshairBone.Data.Y;
+                _cursorLocalInSkeletonSpace = new Vector2(_crosshairSetupPoseLocalX, _crosshairSetupPoseLocalY);
             }
 
             CacheAltBones(skeleton);
             SortAltRotateBonesByDepth();
-            _lastApplyAltScaleSign = Mathf.Sign(skeleton.ScaleX);
-            if (_lastApplyAltScaleSign == 0f)
+            _lastAltAimSkeletonScaleXSign = Mathf.Sign(skeleton.ScaleX);
+            if (_lastAltAimSkeletonScaleXSign == 0f)
             {
-                _lastApplyAltScaleSign = 1f;
+                _lastAltAimSkeletonScaleXSign = 1f;
             }
 
             _initialized = true;
@@ -125,67 +125,71 @@ namespace Gameplay.Aim
         {
             if (altRotateBones != null && altRotateBones.Length > 0)
             {
-                _altRotateRefs = new Bone[altRotateBones.Length];
-                _altRotateWeights = new float[altRotateBones.Length];
+                _cachedAltRotateBones = new Bone[altRotateBones.Length];
+                _cachedAltRotateWeights = new float[altRotateBones.Length];
                 for (var i = 0; i < altRotateBones.Length; i++)
                 {
-                    var name = altRotateBones[i].boneName;
-                    _altRotateRefs[i] = string.IsNullOrEmpty(name) ? null : skeleton.FindBone(name);
-                    _altRotateWeights[i] = altRotateBones[i].weight;
+                    var configuredBoneName = altRotateBones[i].boneName;
+                    _cachedAltRotateBones[i] = string.IsNullOrEmpty(configuredBoneName)
+                        ? null
+                        : skeleton.FindBone(configuredBoneName);
+                    _cachedAltRotateWeights[i] = altRotateBones[i].weight;
                 }
             }
 
             if (altLockedBones != null && altLockedBones.Length > 0)
             {
-                _altLockedRefs = new Bone[altLockedBones.Length];
+                _cachedAltLockedBones = new Bone[altLockedBones.Length];
                 for (var i = 0; i < altLockedBones.Length; i++)
                 {
-                    var name = altLockedBones[i].boneName;
-                    _altLockedRefs[i] = string.IsNullOrEmpty(name) ? null : skeleton.FindBone(name);
+                    var configuredBoneName = altLockedBones[i].boneName;
+                    _cachedAltLockedBones[i] = string.IsNullOrEmpty(configuredBoneName)
+                        ? null
+                        : skeleton.FindBone(configuredBoneName);
                 }
             }
         }
 
         private static int GetBoneDepth(Bone bone)
         {
-            var d = 0;
+            var depth = 0;
             while (bone != null)
             {
-                d++;
+                depth++;
                 bone = bone.Parent;
             }
 
-            return d;
+            return depth;
         }
 
         private void SortAltRotateBonesByDepth()
         {
-            if (_altRotateRefs == null || _altRotateRefs.Length < 2)
+            if (_cachedAltRotateBones == null || _cachedAltRotateBones.Length < 2)
             {
                 return;
             }
 
-            var n = _altRotateRefs.Length;
-            var order = new int[n];
-            for (var i = 0; i < n; i++)
+            var boneCount = _cachedAltRotateBones.Length;
+            var sortOrderByDepth = new int[boneCount];
+            for (var i = 0; i < boneCount; i++)
             {
-                order[i] = i;
+                sortOrderByDepth[i] = i;
             }
 
-            Array.Sort(order, (a, b) =>
-                GetBoneDepth(_altRotateRefs[a]).CompareTo(GetBoneDepth(_altRotateRefs[b])));
+            Array.Sort(sortOrderByDepth, (indexA, indexB) =>
+                GetBoneDepth(_cachedAltRotateBones[indexA]).CompareTo(GetBoneDepth(_cachedAltRotateBones[indexB])));
 
-            var newRefs = new Bone[n];
-            var newWeights = new float[n];
-            for (var i = 0; i < n; i++)
+            var reorderedBones = new Bone[boneCount];
+            var reorderedWeights = new float[boneCount];
+            for (var i = 0; i < boneCount; i++)
             {
-                var j = order[i];
-                newRefs[i] = _altRotateRefs[j];
-                newWeights[i] = _altRotateWeights[j];
+                var sourceIndex = sortOrderByDepth[i];
+                reorderedBones[i] = _cachedAltRotateBones[sourceIndex];
+                reorderedWeights[i] = _cachedAltRotateWeights[sourceIndex];
             }
 
-            _altRotateRefs = newRefs;
-            _altRotateWeights = newWeights;
+            _cachedAltRotateBones = reorderedBones;
+            _cachedAltRotateWeights = reorderedWeights;
         }
 
         private void OnEnable()
@@ -210,27 +214,27 @@ namespace Gameplay.Aim
 
         private void BeforeAnimationApply(ISkeletonAnimation _)
         {
-            if (!_resetAltBonesBeforeNextApply)
+            if (!_shouldResetAltBonesBeforeNextAnimationApply)
             {
                 return;
             }
 
-            _resetAltBonesBeforeNextApply = false;
+            _shouldResetAltBonesBeforeNextAnimationApply = false;
             ResetAltAffectedBonesToSetupPose();
         }
 
         private void ApplyAimAnimation()
         {
             var state = skeletonAnimation.AnimationState;
-            if (_spineAimActive && !string.IsNullOrEmpty(aimAnimation))
+            if (_useSpineAimAnimation && !string.IsNullOrEmpty(aimAnimation))
             {
-                _aimEntry = state.SetAnimation(aimTrackIndex, aimAnimation, loop: true);
-                _aimEntry.MixBlend = MixBlend.Add;
-                _aimEntry.Alpha = _currentAlpha;
+                _aimTrackEntry = state.SetAnimation(aimTrackIndex, aimAnimation, loop: true);
+                _aimTrackEntry.MixBlend = MixBlend.Add;
+                _aimTrackEntry.Alpha = _aimBlendAlpha;
             }
             else
             {
-                _aimEntry = null;
+                _aimTrackEntry = null;
                 state.SetEmptyAnimation(aimTrackIndex, 0f);
             }
         }
@@ -251,13 +255,13 @@ namespace Gameplay.Aim
 
         private void SetSpineVersusAltMode(bool wantSpineAim)
         {
-            if (_spineAimActive == wantSpineAim)
+            if (_useSpineAimAnimation == wantSpineAim)
             {
                 return;
             }
 
-            var previous = _spineAimActive;
-            _spineAimActive = wantSpineAim;
+            var wasSpineAimAnimationActive = _useSpineAimAnimation;
+            _useSpineAimAnimation = wantSpineAim;
 
             if (!_initialized)
             {
@@ -265,7 +269,7 @@ namespace Gameplay.Aim
             }
 
             ApplyAimAnimation();
-            if (previous)
+            if (wasSpineAimAnimationActive)
             {
                 ResetAimIk();
             }
@@ -273,25 +277,25 @@ namespace Gameplay.Aim
 
         private void AfterAnimationApply(ISkeletonAnimation _)
         {
-            if (_spineAimActive && _currentAlpha <= 0f)
+            if (_useSpineAimAnimation && _aimBlendAlpha <= 0f)
             {
                 ResetAimIk();
             }
 
-            if (!_spineAimActive && _currentAlpha > 0f)
+            if (!_useSpineAimAnimation && _aimBlendAlpha > 0f)
             {
-                ApplyAltAim(_currentAlpha);
+                ApplyAltAim(_aimBlendAlpha);
             }
 
             if (_crosshairBone != null)
             {
-                var setup = new Vector2(_setupCrosshairX, _setupCrosshairY);
-                var blended = Vector2.Lerp(setup, _cursorSkelLocal, _currentAlpha);
-                _crosshairBone.X = blended.x;
-                _crosshairBone.Y = blended.y;
+                var crosshairSetupLocal = new Vector2(_crosshairSetupPoseLocalX, _crosshairSetupPoseLocalY);
+                var blendedCrosshairLocal = Vector2.Lerp(crosshairSetupLocal, _cursorLocalInSkeletonSpace, _aimBlendAlpha);
+                _crosshairBone.X = blendedCrosshairLocal.x;
+                _crosshairBone.Y = blendedCrosshairLocal.y;
             }
 
-            if (_crosshairSlot != null && _spineAimActive)
+            if (_crosshairSlot != null && _useSpineAimAnimation)
             {
                 _crosshairSlot.Attachment = null;
             }
@@ -299,11 +303,11 @@ namespace Gameplay.Aim
 
         private void ResetAltAffectedBonesToSetupPose()
         {
-            if (_altLockedRefs != null)
+            if (_cachedAltLockedBones != null)
             {
-                for (var i = 0; i < _altLockedRefs.Length; i++)
+                for (var i = 0; i < _cachedAltLockedBones.Length; i++)
                 {
-                    var bone = _altLockedRefs[i];
+                    var bone = _cachedAltLockedBones[i];
                     if (bone != null)
                     {
                         LerpBoneToSetup(bone, 1f);
@@ -311,14 +315,14 @@ namespace Gameplay.Aim
                 }
             }
 
-            if (_altRotateRefs == null)
+            if (_cachedAltRotateBones == null)
             {
                 return;
             }
 
-            for (var i = 0; i < _altRotateRefs.Length; i++)
+            for (var i = 0; i < _cachedAltRotateBones.Length; i++)
             {
-                var bone = _altRotateRefs[i];
+                var bone = _cachedAltRotateBones[i];
                 if (bone != null)
                 {
                     LerpBoneToSetup(bone, 1f);
@@ -328,11 +332,11 @@ namespace Gameplay.Aim
 
         private void ApplyAltAim(float alpha)
         {
-            if (_altLockedRefs != null)
+            if (_cachedAltLockedBones != null)
             {
-                for (var i = 0; i < _altLockedRefs.Length; i++)
+                for (var i = 0; i < _cachedAltLockedBones.Length; i++)
                 {
-                    var bone = _altLockedRefs[i];
+                    var bone = _cachedAltLockedBones[i];
                     if (bone == null)
                     {
                         continue;
@@ -342,23 +346,23 @@ namespace Gameplay.Aim
                 }
             }
 
-            if (_altRotateRefs == null)
+            if (_cachedAltRotateBones == null)
             {
                 return;
             }
 
             var skeleton = skeletonAnimation.Skeleton;
-            var sxSign = Mathf.Sign(skeleton.ScaleX);
-            if (sxSign == 0f)
+            var skeletonScaleXSign = Mathf.Sign(skeleton.ScaleX);
+            if (skeletonScaleXSign == 0f)
             {
-                sxSign = 1f;
+                skeletonScaleXSign = 1f;
             }
 
-            if (Mathf.Abs(sxSign - _lastApplyAltScaleSign) > 0.01f)
+            if (Mathf.Abs(skeletonScaleXSign - _lastAltAimSkeletonScaleXSign) > 0.01f)
             {
-                for (var i = 0; i < _altRotateRefs.Length; i++)
+                for (var i = 0; i < _cachedAltRotateBones.Length; i++)
                 {
-                    var bone = _altRotateRefs[i];
+                    var bone = _cachedAltRotateBones[i];
                     if (bone != null)
                     {
                         LerpBoneToSetup(bone, 1f);
@@ -366,25 +370,25 @@ namespace Gameplay.Aim
                 }
             }
 
-            _lastApplyAltScaleSign = sxSign;
+            _lastAltAimSkeletonScaleXSign = skeletonScaleXSign;
 
             skeleton.UpdateWorldTransform();
 
-            for (var i = 0; i < _altRotateRefs.Length; i++)
+            for (var i = 0; i < _cachedAltRotateBones.Length; i++)
             {
-                var bone = _altRotateRefs[i];
+                var bone = _cachedAltRotateBones[i];
                 if (bone == null)
                 {
                     continue;
                 }
 
-                var w = _altRotateWeights[i] * alpha;
-                if (w <= 0f)
+                var rotationBlendWeight = _cachedAltRotateWeights[i] * alpha;
+                if (rotationBlendWeight <= 0f)
                 {
                     continue;
                 }
 
-                RotateBoneTowards(bone, _cursorSkelLocal, w, altAimAngleOffset);
+                RotateBoneTowards(bone, _cursorLocalInSkeletonSpace, rotationBlendWeight, altAimAngleOffset);
             }
         }
 
@@ -400,37 +404,39 @@ namespace Gameplay.Aim
             bone.ShearY = Mathf.Lerp(bone.ShearY, data.ShearY, weight);
         }
 
-        private static void RotateBoneTowards(Bone bone, Vector2 targetSkeletonLocal, float weight, float worldOffsetDeg)
+        private static void RotateBoneTowards(Bone bone, Vector2 targetSkeletonLocal, float weight, float worldOffsetDegrees)
         {
-            var dx = targetSkeletonLocal.x - bone.WorldX;
-            var dy = targetSkeletonLocal.y - bone.WorldY;
-            if (Mathf.Approximately(dx, 0f) && Mathf.Approximately(dy, 0f))
+            var deltaX = targetSkeletonLocal.x - bone.WorldX;
+            var deltaY = targetSkeletonLocal.y - bone.WorldY;
+            if (Mathf.Approximately(deltaX, 0f) && Mathf.Approximately(deltaY, 0f))
             {
                 return;
             }
 
-            var sk = bone.Skeleton;
-            var flip = Mathf.Sign(sk.ScaleX * sk.ScaleY);
-            if (flip == 0f)
+            var boneSkeleton = bone.Skeleton;
+            var flipSign = Mathf.Sign(boneSkeleton.ScaleX * boneSkeleton.ScaleY);
+            if (flipSign == 0f)
             {
-                flip = 1f;
+                flipSign = 1f;
             }
 
-            var dyAim = dy * flip;
-            var desiredWorldDeg = Mathf.Atan2(dyAim, dx) * Mathf.Rad2Deg + worldOffsetDeg;
+            var directionYForAtan2 = deltaY * flipSign;
+            var desiredWorldRotationDegrees = Mathf.Atan2(directionYForAtan2, deltaX) * Mathf.Rad2Deg + worldOffsetDegrees;
 
             var parent = bone.Parent;
-            var parentWorldDeg = parent != null ? parent.WorldRotationX : 0f;
-            var sign = parent != null
+            var parentWorldRotationDegrees = parent != null ? parent.WorldRotationX : 0f;
+            var parentDeterminantSign = parent != null
                 ? Mathf.Sign(parent.A * parent.D - parent.B * parent.C)
                 : Mathf.Sign(bone.Skeleton.ScaleX * bone.Skeleton.ScaleY);
-            if (sign == 0f)
+
+            if (parentDeterminantSign == 0f)
             {
-                sign = 1f;
+                parentDeterminantSign = 1f;
             }
 
-            var desiredLocal = (desiredWorldDeg - parentWorldDeg) * sign;
-            bone.Rotation = Mathf.LerpAngle(bone.Rotation, desiredLocal, weight);
+            var desiredLocalRotationDegrees =
+                (desiredWorldRotationDegrees - parentWorldRotationDegrees) * parentDeterminantSign;
+            bone.Rotation = Mathf.LerpAngle(bone.Rotation, desiredLocalRotationDegrees, weight);
         }
 
         public void UpdateFacing(bool isAimingHeld, float cursorWorldX, float horizontalVelocity)
@@ -442,14 +448,14 @@ namespace Gameplay.Aim
 
             var desiredSign = 0;
 
-            var preferCursorFacing = isAimingHeld || _currentAlpha > 0f;
+            var preferCursorFacing = isAimingHeld || _aimBlendAlpha > 0f;
 
             if (preferCursorFacing)
             {
-                var dx = cursorWorldX - skeletonAnimation.transform.position.x;
-                if (Mathf.Abs(dx) > FacingAimDeadZone)
+                var cursorOffsetX = cursorWorldX - skeletonAnimation.transform.position.x;
+                if (Mathf.Abs(cursorOffsetX) > FacingAimDeadZone)
                 {
-                    desiredSign = dx > 0f ? 1 : -1;
+                    desiredSign = cursorOffsetX > 0f ? 1 : -1;
                 }
             }
             else if (Mathf.Abs(horizontalVelocity) > FacingMovementThreshold)
@@ -463,45 +469,45 @@ namespace Gameplay.Aim
             }
 
             var skeleton = skeletonAnimation.Skeleton;
-            var magnitude = Mathf.Abs(skeleton.ScaleX);
-            if (magnitude < 0.0001f)
+            var scaleXMagnitude = Mathf.Abs(skeleton.ScaleX);
+            if (scaleXMagnitude < 0.0001f)
             {
-                magnitude = 1f;
+                scaleXMagnitude = 1f;
             }
 
-            skeleton.ScaleX = magnitude * desiredSign;
+            skeleton.ScaleX = scaleXMagnitude * desiredSign;
         }
 
         public void Tick(bool isAimingHeld, Vector2 cursorWorldPosition)
         {
             IsAiming = isAimingHeld;
 
-            var charPos = skeletonAnimation.transform.position;
-            var cursorAbove = cursorWorldPosition.y - charPos.y;
+            var characterWorldPosition = skeletonAnimation.transform.position;
+            var cursorAbove = cursorWorldPosition.y - characterWorldPosition.y;
             var wantSpineAim = cursorAbove > aimSpineWhenCursorAboveOffsetY;
             SetSpineVersusAltMode(wantSpineAim);
 
             var targetAlpha = isAimingHeld ? 1f : 0f;
             var fadeSpeed = 1f / settings.AimFadeTime;
-            var alphaBefore = _currentAlpha;
-            _currentAlpha = Mathf.MoveTowards(_currentAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
+            var previousAimBlendAlpha = _aimBlendAlpha;
+            _aimBlendAlpha = Mathf.MoveTowards(_aimBlendAlpha, targetAlpha, fadeSpeed * Time.deltaTime);
 
-            if (!_spineAimActive && alphaBefore > 0f && _currentAlpha <= 0f)
+            if (!_useSpineAimAnimation && previousAimBlendAlpha > 0f && _aimBlendAlpha <= 0f)
             {
-                _resetAltBonesBeforeNextApply = true;
+                _shouldResetAltBonesBeforeNextAnimationApply = true;
             }
 
-            if (_aimEntry != null)
+            if (_aimTrackEntry != null)
             {
-                _aimEntry.Alpha = _currentAlpha;
+                _aimTrackEntry.Alpha = _aimBlendAlpha;
             }
 
             var skeleton = skeletonAnimation.Skeleton;
-            var cursorWorld3 = new Vector3(cursorWorldPosition.x, cursorWorldPosition.y, 0f);
-            var local = skeletonAnimation.transform.InverseTransformPoint(cursorWorld3);
-            local.x *= skeleton.ScaleX;
-            local.y *= skeleton.ScaleY;
-            _cursorSkelLocal = new Vector2(local.x, local.y);
+            var cursorWorldPosition3 = new Vector3(cursorWorldPosition.x, cursorWorldPosition.y, 0f);
+            var cursorInCharacterLocalSpace = skeletonAnimation.transform.InverseTransformPoint(cursorWorldPosition3);
+            cursorInCharacterLocalSpace.x *= skeleton.ScaleX;
+            cursorInCharacterLocalSpace.y *= skeleton.ScaleY;
+            _cursorLocalInSkeletonSpace = new Vector2(cursorInCharacterLocalSpace.x, cursorInCharacterLocalSpace.y);
         }
     }
 }

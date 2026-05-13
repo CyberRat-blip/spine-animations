@@ -8,7 +8,7 @@ namespace Gameplay.Aim
         [SerializeField] private float fadeTime = 0.12f;
         [SerializeField] private SpriteRenderer fadeRenderer;
 
-        private float _alpha;
+        private float _fadeAlpha;
 
         private void Awake()
         {
@@ -26,9 +26,9 @@ namespace Gameplay.Aim
             }
 
             var fadeSpeed = 1f / Mathf.Max(0.0001f, fadeTime);
-            _alpha = Mathf.MoveTowards(_alpha, isAiming ? 1f : 0f, fadeSpeed * Time.deltaTime);
+            _fadeAlpha = Mathf.MoveTowards(_fadeAlpha, isAiming ? 1f : 0f, fadeSpeed * Time.deltaTime);
 
-            var shouldBeVisible = _alpha > 0f;
+            var shouldBeVisible = _fadeAlpha > 0f;
             if (view.gameObject.activeSelf != shouldBeVisible)
             {
                 view.gameObject.SetActive(shouldBeVisible);
@@ -43,9 +43,9 @@ namespace Gameplay.Aim
 
             if (fadeRenderer != null)
             {
-                var c = fadeRenderer.color;
-                c.a = _alpha;
-                fadeRenderer.color = c;
+                var fadeColor = fadeRenderer.color;
+                fadeColor.a = _fadeAlpha;
+                fadeRenderer.color = fadeColor;
             }
         }
     }

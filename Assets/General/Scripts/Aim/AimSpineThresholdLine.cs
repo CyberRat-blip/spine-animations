@@ -45,9 +45,9 @@ namespace Gameplay.Aim
             var center = aim.transform.position;
             var y = aim.AimSpineThresholdWorldY;
             var z = center.z + zOffset;
-            var half = Mathf.Max(0.01f, horizontalHalfWidth);
-            lineRenderer.SetPosition(0, new Vector3(center.x - half, y, z));
-            lineRenderer.SetPosition(1, new Vector3(center.x + half, y, z));
+            var halfWidth = Mathf.Max(0.01f, horizontalHalfWidth);
+            lineRenderer.SetPosition(0, new Vector3(center.x - halfWidth, y, z));
+            lineRenderer.SetPosition(1, new Vector3(center.x + halfWidth, y, z));
         }
     }
 }

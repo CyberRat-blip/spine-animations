@@ -50,18 +50,18 @@ namespace Gameplay
             }
 
             var radius = Mathf.Max(0f, characterHeight * heightMultiplier);
-            var segs = Mathf.Max(8, segments);
+            var segmentCount = Mathf.Max(8, segments);
 
             line.useWorldSpace = false;
             line.loop = true;
-            line.positionCount = segs;
+            line.positionCount = segmentCount;
 
-            for (var i = 0; i < segs; i++)
+            for (var i = 0; i < segmentCount; i++)
             {
-                var t = (float)i / segs * Mathf.PI * 2f;
+                var angleRadians = (float)i / segmentCount * Mathf.PI * 2f;
                 line.SetPosition(i, new Vector3(
-                    centerOffset.x + Mathf.Cos(t) * radius,
-                    centerOffset.y + Mathf.Sin(t) * radius,
+                    centerOffset.x + Mathf.Cos(angleRadians) * radius,
+                    centerOffset.y + Mathf.Sin(angleRadians) * radius,
                     0f));
             }
         }
