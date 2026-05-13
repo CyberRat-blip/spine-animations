@@ -1,19 +1,18 @@
-﻿using Gameplay.Config;
+﻿using System;
+using Gameplay.Config;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
 
 namespace Gameplay.Aim
 {
-    public enum AimMode
-    {
-        Aim,
-        Alt,
-    }
-
     [RequireComponent(typeof(SkeletonAnimation))]
     public sealed class SpineAimController : MonoBehaviour, IAimController
     {
+        private const bool AutoFlipFacing = true;
+        private const float FacingAimDeadZone = 0.1f;
+        private const float FacingMovementThreshold = 0.1f;
+
         [System.Serializable]
         private struct AltRotateBone
         {
@@ -30,15 +29,12 @@ namespace Gameplay.Aim
         [SerializeField] private SkeletonAnimation skeletonAnimation;
         [SerializeField] private PlayerSettings settings;
 
-        [Header("Aim Mode")]
-        [SerializeField] private AimMode initialAimMode = AimMode.Aim;
-
-        [Header("Aim - анимация в Spine + IK на руку")]
+        [Header("Aim - Spine анимация + IK")]
         [SpineAnimation][SerializeField] private string aimAnimation = "aim";
         [SpineIkConstraint][SerializeField] private string aimIk = "aim-ik";
         [SerializeField] private int aimTrackIndex = 3;
 
-        [Header("Alt - без Spine: код фиксирует и крутит кости")]
+        [Header("Alt - код крутит кости")]
         [SerializeField] private AltRotateBone[] altRotateBones;
 
         [SerializeField] private AltLockedBone[] altLockedBones;
@@ -46,12 +42,8 @@ namespace Gameplay.Aim
         [Range(-90f, 90f)]
         [SerializeField] private float altAimAngleOffset = 0f;
 
-        [Header("Facing - автоповорот персонажа")]
-        [SerializeField] private bool autoFlip = true;
-
-        [SerializeField] private float facingAimDeadZone = 0.1f;
-
-        [SerializeField] private float facingMovementThreshold = 0.1f;
+        [Header("Порог по высоте курсора")]
+        [SerializeField] private float aimSpineWhenCursorAboveOffsetY = 0.35f;
 
         [Header("Crosshair")]
         [SpineBone][SerializeField] private string crosshairBoneName = "crosshair";
@@ -63,41 +55,25 @@ namespace Gameplay.Aim
         private float[] _altRotateWeights;
         private Bone[] _altLockedRefs;
 
-        private AimMode _aimMode;
         private bool _initialized;
+        private bool _spineAimActive;
 
         private float _setupCrosshairX;
         private float _setupCrosshairY;
         private Vector2 _cursorSkelLocal;
         private float _currentAlpha;
 
+        private float _lastApplyAltScaleSign = 1f;
+
         public bool IsAiming { get; private set; }
 
-        public AimMode Mode
-        {
-            get => _aimMode;
-            set
-            {
-                if (_aimMode == value)
-                {
-                    return;
-                }
+        public float AimSpineWhenCursorAboveOffsetY => aimSpineWhenCursorAboveOffsetY;
 
-                var previous = _aimMode;
-                _aimMode = value;
+        public float AimSpineThresholdWorldY => skeletonAnimation != null
+            ? skeletonAnimation.transform.position.y + aimSpineWhenCursorAboveOffsetY
+            : transform.position.y + aimSpineWhenCursorAboveOffsetY;
 
-                if (!_initialized)
-                {
-                    return;
-                }
-
-                ApplyAimAnimation();
-                if (previous == AimMode.Aim)
-                {
-                    ResetAimIk();
-                }
-            }
-        }
+        public bool UsesSpineAimAnimation => _spineAimActive;
 
         private void Reset()
         {
@@ -114,7 +90,6 @@ namespace Gameplay.Aim
 
         private void Start()
         {
-            _aimMode = initialAimMode;
             ApplyAimAnimation();
 
             var skeleton = skeletonAnimation.Skeleton;
@@ -127,6 +102,13 @@ namespace Gameplay.Aim
             }
 
             CacheAltBones(skeleton);
+            SortAltRotateBonesByDepth();
+            _lastApplyAltScaleSign = Mathf.Sign(skeleton.ScaleX);
+            if (_lastApplyAltScaleSign == 0f)
+            {
+                _lastApplyAltScaleSign = 1f;
+            }
+
             _initialized = true;
         }
 
@@ -155,12 +137,55 @@ namespace Gameplay.Aim
             }
         }
 
+        private static int GetBoneDepth(Bone bone)
+        {
+            var d = 0;
+            while (bone != null)
+            {
+                d++;
+                bone = bone.Parent;
+            }
+
+            return d;
+        }
+
+        private void SortAltRotateBonesByDepth()
+        {
+            if (_altRotateRefs == null || _altRotateRefs.Length < 2)
+            {
+                return;
+            }
+
+            var n = _altRotateRefs.Length;
+            var order = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                order[i] = i;
+            }
+
+            Array.Sort(order, (a, b) =>
+                GetBoneDepth(_altRotateRefs[a]).CompareTo(GetBoneDepth(_altRotateRefs[b])));
+
+            var newRefs = new Bone[n];
+            var newWeights = new float[n];
+            for (var i = 0; i < n; i++)
+            {
+                var j = order[i];
+                newRefs[i] = _altRotateRefs[j];
+                newWeights[i] = _altRotateWeights[j];
+            }
+
+            _altRotateRefs = newRefs;
+            _altRotateWeights = newWeights;
+        }
+
         private void OnEnable()
         {
             if (skeletonAnimation == null)
             {
                 skeletonAnimation = GetComponent<SkeletonAnimation>();
             }
+
             skeletonAnimation.UpdateLocal += AfterAnimationApply;
         }
 
@@ -175,7 +200,7 @@ namespace Gameplay.Aim
         private void ApplyAimAnimation()
         {
             var state = skeletonAnimation.AnimationState;
-            if (_aimMode == AimMode.Aim && !string.IsNullOrEmpty(aimAnimation))
+            if (_spineAimActive && !string.IsNullOrEmpty(aimAnimation))
             {
                 _aimEntry = state.SetAnimation(aimTrackIndex, aimAnimation, loop: true);
                 _aimEntry.MixBlend = MixBlend.Add;
@@ -202,14 +227,36 @@ namespace Gameplay.Aim
             }
         }
 
+        private void SetSpineVersusAltMode(bool wantSpineAim)
+        {
+            if (_spineAimActive == wantSpineAim)
+            {
+                return;
+            }
+
+            var previous = _spineAimActive;
+            _spineAimActive = wantSpineAim;
+
+            if (!_initialized)
+            {
+                return;
+            }
+
+            ApplyAimAnimation();
+            if (previous)
+            {
+                ResetAimIk();
+            }
+        }
+
         private void AfterAnimationApply(ISkeletonAnimation _)
         {
-            if (_aimMode == AimMode.Aim && _currentAlpha <= 0f)
+            if (_spineAimActive && _currentAlpha <= 0f)
             {
                 ResetAimIk();
             }
 
-            if (_aimMode == AimMode.Alt && _currentAlpha > 0f)
+            if (!_spineAimActive && _currentAlpha > 0f)
             {
                 ApplyAltAim(_currentAlpha);
             }
@@ -236,6 +283,7 @@ namespace Gameplay.Aim
                     {
                         continue;
                     }
+
                     LerpBoneToSetup(bone, alpha);
                 }
             }
@@ -246,6 +294,26 @@ namespace Gameplay.Aim
             }
 
             var skeleton = skeletonAnimation.Skeleton;
+            var sxSign = Mathf.Sign(skeleton.ScaleX);
+            if (sxSign == 0f)
+            {
+                sxSign = 1f;
+            }
+
+            if (Mathf.Abs(sxSign - _lastApplyAltScaleSign) > 0.01f)
+            {
+                for (var i = 0; i < _altRotateRefs.Length; i++)
+                {
+                    var bone = _altRotateRefs[i];
+                    if (bone != null)
+                    {
+                        LerpBoneToSetup(bone, 1f);
+                    }
+                }
+            }
+
+            _lastApplyAltScaleSign = sxSign;
+
             skeleton.UpdateWorldTransform();
 
             for (var i = 0; i < _altRotateRefs.Length; i++)
@@ -255,11 +323,13 @@ namespace Gameplay.Aim
                 {
                     continue;
                 }
+
                 var w = _altRotateWeights[i] * alpha;
                 if (w <= 0f)
                 {
                     continue;
                 }
+
                 RotateBoneTowards(bone, _cursorSkelLocal, w, altAimAngleOffset);
             }
         }
@@ -311,7 +381,7 @@ namespace Gameplay.Aim
 
         public void UpdateFacing(bool isAimingHeld, float cursorWorldX, float horizontalVelocity)
         {
-            if (!autoFlip)
+            if (!AutoFlipFacing)
             {
                 return;
             }
@@ -323,12 +393,12 @@ namespace Gameplay.Aim
             if (preferCursorFacing)
             {
                 var dx = cursorWorldX - skeletonAnimation.transform.position.x;
-                if (Mathf.Abs(dx) > facingAimDeadZone)
+                if (Mathf.Abs(dx) > FacingAimDeadZone)
                 {
                     desiredSign = dx > 0f ? 1 : -1;
                 }
             }
-            else if (Mathf.Abs(horizontalVelocity) > facingMovementThreshold)
+            else if (Mathf.Abs(horizontalVelocity) > FacingMovementThreshold)
             {
                 desiredSign = horizontalVelocity > 0f ? 1 : -1;
             }
@@ -351,6 +421,11 @@ namespace Gameplay.Aim
         public void Tick(bool isAimingHeld, Vector2 cursorWorldPosition)
         {
             IsAiming = isAimingHeld;
+
+            var charPos = skeletonAnimation.transform.position;
+            var cursorAbove = cursorWorldPosition.y - charPos.y;
+            var wantSpineAim = cursorAbove > aimSpineWhenCursorAboveOffsetY;
+            SetSpineVersusAltMode(wantSpineAim);
 
             var targetAlpha = isAimingHeld ? 1f : 0f;
             var fadeSpeed = 1f / settings.AimFadeTime;
